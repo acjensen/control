@@ -1,5 +1,6 @@
 import tensorflow as tf
 from datetime import datetime
+from math import sqrt
 
 
 class Dense(tf.Module):
@@ -40,28 +41,31 @@ class Plant(tf.Module):
     TODO: Design as a sparse matrix (tensors) instead of equations.
     """
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, mass=1, radius=1):
         super().__init__(name=name)
         self.shaft_mass = tf.Variable(1, trainable=False)
         self.shaft_radius = tf.Variable(2, trainable=False)
         self.hand_friction = tf.Variable(1, trainable=False)
         self.I = tf.Variable(.5*mass*sqrt(radius), trainable=False)
 
-    def __call__(self, x):
+    def __call__(self, x, u, d):
         radicand = 2/I*(d*x + u*self.shaft_radius*x)
         if radicand > 0:
             sign = 1
         else:
             sign = -1
-        return sign*sqrt(sign*radicand)
+
+        return sign*tf.sqrt(sign*radicand)
         return self.a_variable * x + self.non_trainable_variable
 
 
 # Make the NN controller
-controller = SequentialModule(name="the_model")
+controller = Controller(name="the_model")
+
+plant = Plant(name="my_plant")
 
 # Call it, with random results
-print("Model results:", my_model(tf.constant([[2.0, 2.0, 2.0]])))
+print("Model results:", plant(tf.constant([[2.0, 2.0, 2.0]])))
 
 
 # class SimpleModule(tf.Module):
