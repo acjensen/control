@@ -3,10 +3,12 @@ Train a control law (offline) to minimize an objective function over a series of
 
 # Dependencies
 cd src
+
 go mod download (I think??)
 
 # Run
 cd src
+
 go run sim.go
 
 # Terms
