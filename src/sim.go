@@ -33,7 +33,9 @@ import (
 	"fmt"
 	"gosim/utils"
 	"math"
+	"strconv"
 
+	"github.com/fogleman/gg"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	// "gonum.org/v1/gonum/mat"
@@ -123,6 +125,7 @@ type Pendulum struct {
 	g float64    // Gravity [m/s^2]
 	l float64    // Length of pendulum [m]
 	m float64    // Mass at the end of the pendulum [kg]
+	f float64    // Air friction coefficient [1]
 	r Controlled // Distance from the pendulum's fulcrum to the mass [m]
 }
 
@@ -137,16 +140,57 @@ type Pendulum struct {
 func (p Pendulum) Derivative(s State) State {
 	s_new := make(State, len(s))
 	s_new[0] = s[1]
-	s_new[1] = -p.g/p.l*math.Sin(s[0]) + s[1]*1.0*p.m*p.r.Control(s)*p.r.Control(s)*math.Sin(s[0])
+	s_new[1] = -p.g/p.l*math.Sin(s[0]) - p.f*s[1] + s[1]*1.0*p.m*p.r.Control(s)*p.r.Control(s)*math.Sin(s[0])
 	return s_new
 }
 
 // Plot the states over time. 'path' is the output filepath.
-func Plot(path string, xys plotter.XYs) {
+func PlotTimeVsState(path string, xys plotter.XYs) {
 	plt, _ := plot.New()
 	scatter, _ := plotter.NewScatter(xys)
 	plt.Add(scatter)
 	plt.Save(600, 600, path)
+}
+
+// Plot the states over time. 'path' is the output filepath.
+func PlotStateSpace(path string, xys plotter.XYs) {
+	plt, _ := plot.New()
+	scatter, _ := plotter.NewScatter(xys)
+	plt.Add(scatter)
+	plt.Save(600, 600, path)
+}
+
+func PendulumGif(path string, states []State, initial_angle float64, step_size float64, num_images int) {
+
+	// Render each pendulum state to .png.
+	canvas_size := 600
+	d := gg.NewContext(canvas_size, canvas_size)
+	d.SetRGB(205, 133, 63)
+	d.SetLineWidth(1)
+	num_states := len(states)
+	x := int(float64(num_states) / float64(num_images))
+	angle := new(float64)
+	*angle = initial_angle
+	pendulum_xy := gg.Matrix{}
+	for idx, s := range states {
+		if idx%x == 0 {
+			fmt.Println(*angle)
+			*angle = *angle + s[0]/step_size
+			pendulum_xy = gg.Scale(float64(canvas_size)/2, float64(canvas_size)/2).Multiply(gg.Rotate(*angle))
+			d.DrawLine(pendulum_xy.XX, pendulum_xy.YX, pendulum_xy.XY, pendulum_xy.YY)
+			d.Stroke()
+			d.SavePNG(path + "/" + strconv.Itoa(idx) + ".png")
+		}
+	}
+}
+
+// Convert a list of states and times to a plotter-compatible format.
+func StatesToXys2(time_vec []float64, data []State) plotter.XYs {
+	xys := make([]plotter.XY, len(time_vec))
+	for step_n, s := range data {
+		xys[step_n] = plotter.XY{X: s[0], Y: s[1]}
+	}
+	return xys
 }
 
 // Convert a list of states and times to a plotter-compatible format.
@@ -190,7 +234,7 @@ func (sim Simulation) simulate() ([]float64, []State) {
 
 	// Step through each time, recording each state as we go in 'states'.
 	fmt.Println("Starting the simulation.")
-	for step_n, _ := range times {
+	for step_n := range times {
 		states[step_n] = current_state
 		new_state = sim.integrator.Forward(sim.plant, current_state, dt)
 		current_state = new_state
@@ -204,24 +248,33 @@ func (sim Simulation) simulate() ([]float64, []State) {
 func main() {
 
 	proj1 := Project{"My cool project!"}
+	ts := TimeSpec{num_steps: 100000, t_end: 100}
+	pendulum := Pendulum{g: 9.81, l: 1.0, m: 1, f: .4, r: Controlled{}}
 	sim1 := Simulation{
 		integrator: RungeKutta4{},
 		state0:     State{0, .0001},
-		ts:         TimeSpec{num_steps: 10000, t_end: 10},
-		plant:      Pendulum{9.81, 1.0, 1, Controlled{}},
+		ts:         ts,
+		plant:      pendulum,
 	}
 
 	times, states := sim1.simulate()
 	// Plot the velocity and acceleration of the pendulum angle.
-	Plot("artifacts/rk4_velocity.png", StatesToXys(times, states, 0))
-	Plot("artifacts/rk4_accel.png", StatesToXys(times, states, 1))
+	PlotTimeVsState("artifacts/rk4_velocity.png", StatesToXys(times, states, 0))
+	PlotTimeVsState("artifacts/rk4_accel.png", StatesToXys(times, states, 1))
+	// Plot the velocity and acceleration against eachother.
+	PlotStateSpace("artifacts/rk4_state_space.png", StatesToXys2(times, states))
 
 	// Run the sim again, this time with the Euler integrator.
 	sim1.integrator = Euler{}
 	times, states = sim1.simulate()
 	// Plot the velocity and acceleration of the pendulum angle.
-	Plot("artifacts/euler_velocity.png", StatesToXys(times, states, 0))
-	Plot("artifacts/euler_accel.png", StatesToXys(times, states, 1))
+	PlotTimeVsState("artifacts/euler_velocity.png", StatesToXys(times, states, 0))
+	PlotTimeVsState("artifacts/euler_accel.png", StatesToXys(times, states, 1))
+	// Plot the velocity and acceleration against eachother.
+	PlotStateSpace("artifacts/euler_state_space.png", StatesToXys2(times, states))
+
+	// Make a pretty .gif
+	PendulumGif("artifacts/gif", states, 0.0, float64(ts.t_end)/float64(ts.num_steps), 200)
 
 	fmt.Println(proj1)
 }
