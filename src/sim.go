@@ -174,7 +174,7 @@ func PendulumGif(path string, states []State, initial_angle float64, step_size f
 	pendulum_xy := gg.Matrix{}
 	for idx, s := range states {
 		if idx%x == 0 {
-			fmt.Println(*angle)
+			fmt.Println(angle)
 			*angle = *angle + s[0]/step_size
 			pendulum_xy = gg.Scale(float64(canvas_size)/2, float64(canvas_size)/2).Multiply(gg.Rotate(*angle))
 			d.DrawLine(pendulum_xy.XX, pendulum_xy.YX, pendulum_xy.XY, pendulum_xy.YY)
