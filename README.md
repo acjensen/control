@@ -1,15 +1,13 @@
 # Goal
-Train a control law (offline) to minimize an objective function over a series of external disturbances to a dynamical system.
+Train a control law to minimize an objective function over a series of external disturbances to a dynamical system.
 
 # Dependencies
-cd src
-
-go mod download (I think??)
+`cd src`
+`go mod download`
 
 # Run
-cd src
-
-go run sim.go
+`cd src`
+`go run sim.go`
 
 # Terms
 - system state 'x'
