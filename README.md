@@ -3,10 +3,12 @@ Train a control law to minimize an objective function over a series of external 
 
 # Dependencies
 `cd src`
+
 `go mod download`
 
 # Run
 `cd src`
+
 `go run sim.go`
 
 # Terms
